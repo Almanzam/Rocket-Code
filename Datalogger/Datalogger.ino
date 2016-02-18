@@ -24,31 +24,31 @@
 #include <SD.h>
 
 const int chipSelect = 4;
-
+String accelString = "";
+String baroString = "";
+String gyroString = "";
 void setup() {
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-
-
-  Serial.print("Initializing SD card...");
+//  while (!Serial) {
+//    ; // wait for serial port to connect. Needed for native USB port only
+//  }
+//
+//
+//  Serial.print("Initializing SD card...");
 
   // see if the card is present and can be initialized:
-  if (!SD.begin(chipSelect)) {
-    Serial.println("Card failed, or not present");
-    // don't do anything more:
-    return;
-  }
-  Serial.println("card initialized.");
+//  if (!SD.begin(chipSelect)) {
+//    Serial.println("Card failed, or not present");
+//    // don't do anything more:
+//    return;
+//  }
+//  Serial.println("card initialized.");
 }
 
 void loop() {
   // make a string for assembling the data to log:
-  String accelString = "";
-  String baroString = "";
-  String gyroString = "";
+  
   int loopcount = 0;
   // read three sensors and append to the string:
 //  for (int analogPin = 0; analogPin < 3; analogPin++) {
@@ -58,9 +58,9 @@ void loop() {
 //      dataString += ",";
 //    }
 //  }
-  int accel = analogread(0);
-  int baro = analogread(1);
-  int gyro = analogread(2);
+  int accel = analogRead(0);
+  int baro = analogRead(1);
+  int gyro = analogRead(2);
 
   accelString += String(accel);
   baroString += String(baro);
@@ -71,30 +71,28 @@ void loop() {
   File accelerometer = SD.open("accellog.txt", FILE_WRITE);
   
   // if the file is available, write to it:
-  if (dataFile) {
-    dataFile.println(accelstring);
-    dataFile.close();
+  if (accelerometer) {
+    accelerometer.println(accelString);
+    accelerometer.close();
     // print to the serial port too:
     //Serial.println(dataString);
   }
   File barometer = SD.open("barolog.txt", FILE_WRITE);
-  if (dataFile) {
-    dataFile.println(barostring);
-    dataFile.close();
+  if (barometer) {
+    barometer.println(baroString);
+    barometer.close();
     // print to the serial port too:
     //Serial.println(dataString);
   }
   File gyroscope = SD.open("gyrolog.txt", FILE_WRITE);
-  if (dataFile) {
-    dataFile.println(gyrostring);
-    dataFile.close();
+  if (barometer) {
+    barometer.println(gyroString);
+    barometer.close();
     // print to the serial port too:
     //Serial.println(dataString);
   }
   // if the file isn't open, pop up an error:
-  else {
-    Serial.println("error opening datalog.txt");
-  }
+  
 }
 
 
