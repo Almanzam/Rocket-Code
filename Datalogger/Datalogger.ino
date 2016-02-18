@@ -72,20 +72,25 @@ void loop() {
   
   // if the file is available, write to it:
   if (dataFile) {
-    dataFile.println(dataString);
+    dataFile.println(accelstring);
     dataFile.close();
     // print to the serial port too:
-    Serial.println(dataString);
+    //Serial.println(dataString);
   }
   File barometer = SD.open("barolog.txt", FILE_WRITE);
   if (dataFile) {
-    dataFile.println(dataString);
+    dataFile.println(barostring);
     dataFile.close();
     // print to the serial port too:
-    Serial.println(dataString);
+    //Serial.println(dataString);
   }
   File gyroscope = SD.open("gyrolog.txt", FILE_WRITE);
-
+  if (dataFile) {
+    dataFile.println(gyrostring);
+    dataFile.close();
+    // print to the serial port too:
+    //Serial.println(dataString);
+  }
   // if the file isn't open, pop up an error:
   else {
     Serial.println("error opening datalog.txt");
