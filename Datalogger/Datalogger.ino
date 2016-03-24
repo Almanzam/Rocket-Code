@@ -75,21 +75,21 @@ void loop() {
     accelerometer.println(accelString);
     accelerometer.close();
     // print to the serial port too:
-    //Serial.println(dataString);
+    Serial.println(accelString);
   }
   File barometer = SD.open("barolog.txt", FILE_WRITE);
   if (barometer) {
     barometer.println(baroString);
     barometer.close();
     // print to the serial port too:
-    //Serial.println(dataString);
+    Serial.println(baroString);
   }
   File gyroscope = SD.open("gyrolog.txt", FILE_WRITE);
   if (barometer) {
     barometer.println(gyroString);
     barometer.close();
     // print to the serial port too:
-    //Serial.println(dataString);
+    Serial.println(gyroString);
   }
   // if the file isn't open, pop up an error:
   
