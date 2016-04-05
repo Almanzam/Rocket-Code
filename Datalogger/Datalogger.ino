@@ -10,7 +10,7 @@
  ** MOSI - pin 11
  ** MISO - pin 12
  ** CLK - pin 13
- ** CS - pin 4
+ ** CS - pin 10
 
  created  24 Nov 2010
  modified 9 Apr 2012
@@ -22,28 +22,45 @@
 
 #include <SPI.h>
 #include <SD.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
 
-const int chipSelect = 4;
+
+#define BNO055_SAMPLERATE_DELAY_MS (100)
+
+Adafruit_BNO055 bno = Adafruit_BNO055();
+
+const int chipSelect = 10;
 String accelString = "";
 String baroString = "";
 String gyroString = "";
+File accelerometer;
+File linear_acceleration;
+File gravity;
+//File barometer;
+File w_velocity;
+File gyroscope;
+File Temperature;
+File Orientation;
+
 void setup() {
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
-//  while (!Serial) {
-//    ; // wait for serial port to connect. Needed for native USB port only
-//  }
-//
-//
-//  Serial.print("Initializing SD card...");
+ 
+  while (!Serial) {
+     // wait for serial port to connect. Needed for native USB port only
+  }
 
-  // see if the card is present and can be initialized:
-//  if (!SD.begin(chipSelect)) {
-//    Serial.println("Card failed, or not present");
-//    // don't do anything more:
-//    return;
-//  }
-//  Serial.println("card initialized.");
+
+  Serial.print("Initializing SD card...");
+
+   //see if the card is present and can be initialized:
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    return;
+  }
+  Serial.println("card initialized.");
 }
 
 void loop() {
@@ -58,13 +75,20 @@ void loop() {
 //      dataString += ",";
 //    }
 //  }
-  int accel = analogRead(0);
+  imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+  String accelString = getString(accel);
+  imu::Vector<3> lin_accel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+  String lin_accelString = getString(lin_accel);
+  imu::Vector<3> grav = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
+  String gravString = getString(grav);
+  imu::Quaternion gyro = bno.getQuat();
+  int8_t temp = bno.getTemp();
   int baro = analogRead(1);
-  int gyro = analogRead(2);
+ 
 
-  accelString += String(accel);
-  baroString += String(baro);
-  gyroString += String(gyro);
+  
+  baroString = String(baro);
+
 
   // open the file. note that only one file can be open at a time,
   // so you have to close this one before opening another.
@@ -72,10 +96,12 @@ void loop() {
   
   // if the file is available, write to it:
   if (accelerometer) {
-    accelerometer.println(accelString);
-    accelerometer.close();
+    accelerometer.println();
     // print to the serial port too:
     Serial.println(accelString);
+  }else {
+    // if the file didn't open, print an error:
+    Serial.println("error opening accellog.txt");
   }
   File barometer = SD.open("barolog.txt", FILE_WRITE);
   if (barometer) {
@@ -85,15 +111,22 @@ void loop() {
     Serial.println(baroString);
   }
   File gyroscope = SD.open("gyrolog.txt", FILE_WRITE);
-  if (barometer) {
-    barometer.println(gyroString);
-    barometer.close();
+  if (gyroscope) {
+    gyroscope.println(gyroString);
+    gyroscope.close();
     // print to the serial port too:
     Serial.println(gyroString);
   }
   // if the file isn't open, pop up an error:
-  
+  Serial.println("---");
+
+
+
 }
+ String getString(imu::Vector<3> vec){
+  String res = "X: " + String(vec.x()) + "Y: " + String(vec.y()) + "Z: " + String(vec.z());
+  return res;
+ }
 
 
 
