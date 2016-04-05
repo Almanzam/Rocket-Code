@@ -1,22 +1,8 @@
 /*
-  SD card datalogger
+  Rocket Code
+  This is loosely based on example code in the public domain, so I guess this is too, if you ever need to make a Curvinci rocket
 
- This example shows how to log data from three analog sensors
- to an SD card using the SD library.
-
- The circuit:
- * analog sensors on analog ins 0, 1, and 2
- * SD card attached to SPI bus as follows:
- ** MOSI - pin 11
- ** MISO - pin 12
- ** CLK - pin 13
- ** CS - pin 10
-
- created  24 Nov 2010
- modified 9 Apr 2012
- by Tom Igoe
-
- This example code is in the public domain.
+  It takes the myriad of sensors of the Adafruit BNO055 12 axis sensor and records the vector/quaternion values to a log file
 
  */
 
@@ -24,6 +10,7 @@
 #include <SD.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
+#include <utility/imumaths.h>
 
 
 #define BNO055_SAMPLERATE_DELAY_MS (100)
@@ -34,6 +21,10 @@ const int chipSelect = 10;
 String accelString = "";
 String baroString = "";
 String gyroString = "";
+String magString = "";
+String lin_accelString = "";
+String gravString= "";
+
 File accelerometer;
 File linear_acceleration;
 File gravity;
@@ -42,7 +33,43 @@ File w_velocity;
 File gyroscope;
 File Temperature;
 File Orientation;
+File Log;
 
+
+void displaySensorDetails(void)
+{
+  sensor_t sensor;
+  bno.getSensor(&sensor);
+  File Log = SD.open("log.txt", FILE_WRITE);
+  Serial.println("------------------------------------");
+  Serial.print  ("Sensor:       "); Serial.println(sensor.name);
+  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
+  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
+  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" xxx");
+  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" xxx");
+  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" xxx");
+  Serial.println("------------------------------------");
+  Serial.println("");
+  delay(500);
+}
+void displaySensorStatus(void)
+{
+  /* Get the system status values (mostly for debugging purposes) */
+  uint8_t system_status, self_test_results, system_error;
+  system_status = self_test_results = system_error = 0;
+  bno.getSystemStatus(&system_status, &self_test_results, &system_error);
+
+  /* Display the results in the Serial Monitor */
+  Serial.println("");
+  Serial.print("System Status: 0x");
+  Serial.println(system_status, HEX);
+  Serial.print("Self Test:     0x");
+  Serial.println(self_test_results, HEX);
+  Serial.print("System Error:  0x");
+  Serial.println(system_error, HEX);
+  Serial.println("");
+  delay(500);
+}
 void setup() {
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
@@ -53,6 +80,7 @@ void setup() {
 
 
   Serial.print("Initializing SD card...");
+  pinMode(13, OUTPUT);
 
    //see if the card is present and can be initialized:
   if (!SD.begin(chipSelect)) {
@@ -61,6 +89,12 @@ void setup() {
     return;
   }
   Serial.println("card initialized.");
+  if(!bno.begin()){
+    Serial.println("Inertial Sensor failed, or not present");
+  }
+  delay(1000);
+
+  bno.setExtCrystalUse(true);
 }
 
 void loop() {
@@ -81,12 +115,12 @@ void loop() {
   String lin_accelString = getString(lin_accel);
   imu::Vector<3> grav = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
   String gravString = getString(grav);
-  imu::Quaternion gyro = bno.getQuat();
+  sensors_event_t event;
   int8_t temp = bno.getTemp();
   int baro = analogRead(1);
  
 
-  
+  bno.getEvent(&event);
   baroString = String(baro);
 
 
@@ -123,10 +157,19 @@ void loop() {
 
 
 }
- String getString(imu::Vector<3> vec){
+/* Takes vector output and makes it a nice string to look at, may change it to a row vector but whatever
+ * 
+ */
+String getString(imu::Vector<3> vec){
   String res = "X: " + String(vec.x()) + "Y: " + String(vec.y()) + "Z: " + String(vec.z());
   return res;
- }
+}
+bool Calibration(){
+  uint8_t system,gyro,accel,mag;
+  system = gyro = accel = mag = 0;
+  bno.getCalibration(&system,&gyro,&accel,&mag);
+}
+
 
 
 
