@@ -10,11 +10,6 @@
 #include <SD.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
-#include <utility/imumaths.h>
-
-
-#define BNO055_SAMPLERATE_DELAY_MS (100)
-
 Adafruit_BNO055 bno = Adafruit_BNO055();
 
 const int chipSelect = 10;
@@ -24,15 +19,15 @@ String gyroString = "";
 String magString = "";
 String lin_accelString = "";
 String gravString= "";
+bool isCalibrated = false;
 
-File accelerometer;
-File linear_acceleration;
-File gravity;
-//File barometer;
-File w_velocity;
-File gyroscope;
-File Temperature;
+File Accelerometer;
+File Linear_acceleration;
+File Gravity;
+File Magnet;
+File W_velocity;
 File Orientation;
+File Temperature;
 File Log;
 
 
@@ -41,15 +36,16 @@ void displaySensorDetails(void)
   sensor_t sensor;
   bno.getSensor(&sensor);
   File Log = SD.open("log.txt", FILE_WRITE);
-  Serial.println("------------------------------------");
-  Serial.print  ("Sensor:       "); Serial.println(sensor.name);
-  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
-  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
-  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" xxx");
-  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" xxx");
-  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" xxx");
-  Serial.println("------------------------------------");
-  Serial.println("");
+  Log.println("------------------------------------");
+  Log.print  ("Sensor:       "); Log.println(sensor.name);
+  Log.print  ("Driver Ver:   "); Log.println(sensor.version);
+  Log.print  ("Unique ID:    "); Log.println(sensor.sensor_id);
+  Log.print  ("Max Value:    "); Log.print(sensor.max_value); Log.println(" xxx");
+  Log.print  ("Min Value:    "); Log.print(sensor.min_value); Log.println(" xxx");
+  Log.print  ("Resolution:   "); Log.print(sensor.resolution); Log.println(" xxx");
+  Log.println("------------------------------------");
+  Log.println("");
+  Log.close();
   delay(500);
 }
 void displaySensorStatus(void)
@@ -58,16 +54,17 @@ void displaySensorStatus(void)
   uint8_t system_status, self_test_results, system_error;
   system_status = self_test_results = system_error = 0;
   bno.getSystemStatus(&system_status, &self_test_results, &system_error);
-
+  File Log = SD.open("log.txt", FILE_WRITE);
   /* Display the results in the Serial Monitor */
-  Serial.println("");
-  Serial.print("System Status: 0x");
-  Serial.println(system_status, HEX);
-  Serial.print("Self Test:     0x");
-  Serial.println(self_test_results, HEX);
-  Serial.print("System Error:  0x");
-  Serial.println(system_error, HEX);
-  Serial.println("");
+  Log.println("");
+  Log.print("System Status: 0x");
+  Log.println(system_status, HEX);
+  Log.print("Self Test:     0x");
+  Log.println(self_test_results, HEX);
+  Log.print("System Error:  0x");
+  Log.println(system_error, HEX);
+  Log.println("");
+  Log.close();
   delay(500);
 }
 void setup() {
@@ -93,69 +90,114 @@ void setup() {
     Serial.println("Inertial Sensor failed, or not present");
   }
   delay(1000);
-
+  displaySensorDetails();
+  displaySensorStatus();
+  while(!bno.isFullyCalibrated()){
+    digitalWrite(13, HIGH);   // turn the LED on (HIGH is the voltage level)
+  delay(1000);              // wait for a second
+  digitalWrite(13, LOW);    // turn the LED off by making the voltage LOW
+  delay(1000); 
+  }
   bno.setExtCrystalUse(true);
 }
 
 void loop() {
-  // make a string for assembling the data to log:
-  
-  int loopcount = 0;
-  // read three sensors and append to the string:
-//  for (int analogPin = 0; analogPin < 3; analogPin++) {
-//    int sensor = analogRead(analogPin);
-//    dataString += String(sensor);
-//    if (analogPin < 2) {
-//      dataString += ",";
-//    }
-//  }
-  imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
-  String accelString = getString(accel);
-  imu::Vector<3> lin_accel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
-  String lin_accelString = getString(lin_accel);
-  imu::Vector<3> grav = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
-  String gravString = getString(grav);
-  sensors_event_t event;
-  int8_t temp = bno.getTemp();
-  int baro = analogRead(1);
- 
+  // Get the vectors that the inertial sensor provides
+  imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);  
+  imu::Vector<3> lin_accel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL); 
+  imu::Vector<3> grav = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);  
+  imu::Vector<3> w_vel = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+  imu::Vector<3> magnet = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
 
+  sensors_event_t event;
+  uint8_t temp = bno.getTemp();
   bno.getEvent(&event);
-  baroString = String(baro);
+
+  //Turn them into strings for us to look at
+  String accelString = getString(accel);
+  String lin_accelString = getString(lin_accel);
+  String gravString = getString(grav);
+  String w_velString = getString(w_vel);
+  String magString = getString(magnet);
+  String tempString = String(temp);
+ 
+ 
 
 
   // open the file. note that only one file can be open at a time,
   // so you have to close this one before opening another.
-  File accelerometer = SD.open("accellog.txt", FILE_WRITE);
+  File Accelerometer = SD.open("accellog.txt", FILE_WRITE);
   
   // if the file is available, write to it:
-  if (accelerometer) {
-    accelerometer.println();
+  if (Accelerometer) {
+    Accelerometer.println(accelString);
+    Accelerometer.close();
     // print to the serial port too:
     Serial.println(accelString);
   }else {
     // if the file didn't open, print an error:
     Serial.println("error opening accellog.txt");
   }
-  File barometer = SD.open("barolog.txt", FILE_WRITE);
-  if (barometer) {
-    barometer.println(baroString);
-    barometer.close();
+  
+  File Linear_Acceleration = SD.open("lin_accellog.txt",FILE_WRITE);
+    if (Linear_Acceleration) {
+        Linear_Acceleration.println(lin_accelString);
+        // print to the serial port too:
+        Serial.println(lin_accelString);
+      }else {
+          // if the file didn't open, print an error:
+          Serial.println("error opening lin_accellog.txt");
+      }
+  File Gravity = SD.open("gravlog.txt",FILE_WRITE);
+  if (Gravity) {
+    Gravity.println(gravString);
     // print to the serial port too:
-    Serial.println(baroString);
+    Serial.println(gravString);
+    Gravity.close();
+  }else {
+    // if the file didn't open, print an error:
+    Serial.println("error opening gravlog.txt");
   }
-  File gyroscope = SD.open("gyrolog.txt", FILE_WRITE);
-  if (gyroscope) {
-    gyroscope.println(gyroString);
-    gyroscope.close();
+  File Magnet = SD.open("maglog.txt",FILE_WRITE);
+  if (Magnet) {
+    Magnet.println(magString);
     // print to the serial port too:
-    Serial.println(gyroString);
+    Serial.println(magString);
+    Magnet.close();
+  }else {
+    // if the file didn't open, print an error:
+    Serial.println("error opening maglog.txt");
   }
-  // if the file isn't open, pop up an error:
+  File W_velocity = SD.open("w_vellog.txt",FILE_WRITE);
+  if (W_velocity) {
+    W_velocity.println(w_velString);
+    // print to the serial port too:
+    Serial.println(w_velString);
+    W_velocity.close();
+  }else {
+    // if the file didn't open, print an error:
+    Serial.println("error opening w_vellog.txt");
+  }
+  
+  File Orientation = SD.open("orlog.txt", FILE_WRITE);
+  if (Orientation) {    
+    Orientation.print("X: ");
+    Orientation.print(event.orientation.x, 4);
+    Orientation.print("\tY: ");
+    Orientation.print(event.orientation.y, 4);
+    Orientation.print("\tZ: ");
+    Orientation.print(event.orientation.z, 4);
+    Orientation.println("");
+    Orientation.close(); 
+  }
+  File Temperature = SD.open("templog.txt",FILE_WRITE);
+  if(Temperature){
+    Temperature.println(tempString);
+  }else{
+    Serial.println("Error opening templog.txt");
+  }
   Serial.println("---");
-
-
-
+  delay(100);
 }
 /* Takes vector output and makes it a nice string to look at, may change it to a row vector but whatever
  * 
@@ -164,11 +206,8 @@ String getString(imu::Vector<3> vec){
   String res = "X: " + String(vec.x()) + "Y: " + String(vec.y()) + "Z: " + String(vec.z());
   return res;
 }
-bool Calibration(){
-  uint8_t system,gyro,accel,mag;
-  system = gyro = accel = mag = 0;
-  bno.getCalibration(&system,&gyro,&accel,&mag);
-}
+
+
 
 
 
