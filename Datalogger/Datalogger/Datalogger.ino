@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 /*TODO: add logic to make the rocket stop taking data after it hits the ground
  *      make sure what we have is not broken 
  * 
